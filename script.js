@@ -19,7 +19,8 @@ function setup() {
   posX = app.renderer.width / 2; // центр канваса
 
   displacementSprite = new PIXI.Sprite(loader.resources["img/gradient_large.png"].texture); // спрайт, на основі якого буде створений фільтер
-  displacementFilter = new PIXI.filters.DisplacementFilter(displacementSprite); // 
+  displacementFilter = new PIXI.filters.DisplacementFilter(displacementSprite); // створюємо фільтер
+  // починати анімацію із центра (при першому mouseover на канвасі)
   displacementSprite.anchor.set(0.5);
   displacementSprite.x = app.renderer.width / 2;
   displacementSprite.y = app.renderer.height / 2;
@@ -29,6 +30,13 @@ function setup() {
   container.filters = [displacementFilter, blurFilter];
   displacementFilter.scale.x = 0;
   displacementFilter.scale.y = 0;
+
+  // const blurRaising = setInterval(() => {
+  //   blurFilter.blur += 3;
+  //   if(blurFilter.blur > 15) {
+  //     clearInterval(blurRaising);
+  //   }
+  // }, 100);
 
   const bg = new PIXI.Sprite(loader.resources["img/bg.jpg"].texture);
   bg.width = app.renderer.width;
