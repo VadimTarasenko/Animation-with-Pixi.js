@@ -24,20 +24,21 @@ function setup() {
   displacementSprite.anchor.set(0.5);
   displacementSprite.x = app.renderer.width / 2;
   displacementSprite.y = app.renderer.height / 2;
-
+  // добавляємо фільтр, ставимо йому ширину і висоту - 0
   vx = displacementSprite.x;
   app.stage.addChild(displacementSprite);
-  container.filters = [displacementFilter, blurFilter];
+  container.filters = [displacementFilter];
   displacementFilter.scale.x = 0;
   displacementFilter.scale.y = 0;
-
+  // добавляємо фотку на задній план канваса
   const bg = new PIXI.Sprite(loader.resources["img/bg.jpg"].texture);
   bg.width = app.renderer.width;
   bg.height = app.renderer.height;
   container.addChild(bg);
-
+  // ставимо лістенер на івент переміщення мишкою (або пальцем на сенсорі)
   app.stage.on("mousemove", onPointerMove).on("touchmove", onPointerMove);
   
+  // функція, яка зациклена і моніторить зміни posX
   loop();
 }
 
