@@ -31,13 +31,6 @@ function setup() {
   displacementFilter.scale.x = 0;
   displacementFilter.scale.y = 0;
 
-  // const blurRaising = setInterval(() => {
-  //   blurFilter.blur += 3;
-  //   if(blurFilter.blur > 15) {
-  //     clearInterval(blurRaising);
-  //   }
-  // }, 100);
-
   const bg = new PIXI.Sprite(loader.resources["img/bg.jpg"].texture);
   bg.width = app.renderer.width;
   bg.height = app.renderer.height;
