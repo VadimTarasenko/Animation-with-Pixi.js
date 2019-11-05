@@ -1,64 +1,166 @@
-const app = new PIXI.Application({
-  height: window.innerHeight,   // висота канваса
-  width: window.innerWidth      // ширина канваса
-});
-const loader = new PIXI.Loader(); // об'єкт для загрузки і збереження спрайтів (картинок)
-const container = new PIXI.Container(); // сукупність об'єктів (фоток, фільтрів ...)
+const idGenerator = () => `f${(+new Date).toString(16)}`;
 
-let posX, displacementSprite, displacementFilter, vx;
+const loader = new PIXI.Loader();
+const container = new PIXI.Container();
 
-document.body.appendChild(app.view); // добавляємо до body - canvas
+loader.add("img/gradient_large.png").add("img/gradient_elem2.png").add("img/bg.jpg").add("img/map.png").load(startApp);
 
-app.stage.interactive = true; // дозволити події на канвасі ("mousemove" на 38 строчці)
-app.stage.addChild(container);
+class Ripple {
+  constructor(sprite, id, onRemove) {
+    this.id = id;
+    this.sprite = sprite;
+    this.filter = new PIXI.filters.DisplacementFilter(sprite);
+    this.onRemove = onRemove;
+    // temp ////////////////
+    this.sprite.scale.x = 2;
+    this.sprite.scale.y = 2;
+    ////////////////////////
+  }
 
-
-loader.add("img/gradient4.png").add("img/gradient_large.png").add("img/bg.jpg").load(setup); // загружаємо картинки. Після загрузки - запускаємо ф-цію "setup"
-
-function setup() {
-  posX = app.renderer.width / 2; // центр канваса
-
-  displacementSprite = new PIXI.Sprite(loader.resources["img/gradient_large.png"].texture); // спрайт, на основі якого буде створений фільтер
-  displacementFilter = new PIXI.filters.DisplacementFilter(displacementSprite); // створюємо фільтер
-  // починати анімацію із центра (при першому mouseover на канвасі)
-  displacementSprite.anchor.set(0.5);
-  displacementSprite.x = app.renderer.width / 2;
-  displacementSprite.y = app.renderer.height / 2;
-  // добавляємо фільтр, ставимо йому ширину і висоту - 0
-  vx = displacementSprite.x;
-  app.stage.addChild(displacementSprite);
-  container.filters = [displacementFilter];
-  displacementFilter.scale.x = 0;
-  displacementFilter.scale.y = 0;
-  // добавляємо фотку на задній план канваса
-  const bg = new PIXI.Sprite(loader.resources["img/bg.jpg"].texture);
-  bg.width = app.renderer.width;
-  bg.height = app.renderer.height;
-  container.addChild(bg);
-  // ставимо лістенер на івент переміщення мишкою (або пальцем на сенсорі)
-  app.stage.on("mousemove", onPointerMove).on("touchmove", onPointerMove);
-  
-  // функція, яка зациклена і моніторить зміни posX
-  loop();
+  update = () => {
+    if (this.sprite.scale.x < 13) {
+      this.sprite.scale.x += 0.2;
+      this.sprite.scale.y += 0.2;
+    } else {
+      this.onRemove && this.onRemove();
+    }
+  }
 }
 
-function onPointerMove(eventData) {
-  posX = eventData.data.global.x;
+class Application extends PIXI.Application {
+  constructor(options) {
+    super(options);
+    // start animation variables
+    this.ripples = [];
+    // mouse animation variables
+    this.posX;
+    this.displacementSprite;
+    this.displacementFilter;
+    this.vx;
+
+    this.init();
+  }
+
+  init() {
+    document.body.appendChild(this.view);
+    this.stage.addChild(container);
+    this.stage.interactive = true;
+    this.renderer.backgroundColor = 0xffffff;
+    const bg = new PIXI.Sprite(loader.resources["img/bg.jpg"].texture);
+    bg.anchor.set(0.5);
+    bg.position.set(this.renderer.view.width / 2, this.renderer.view.height / 2);
+    this.stage.addChild(bg);
+
+    this.initStartAnimation();
+  }
+
+  initStartAnimation() {
+    this.ripples.push(this.createRipple(this.renderer.width / 2, 700));
+    this.stage.filters = this.ripples.map((f) => f.filter);
+    this.ripples.push(this.createRipple(1200, 700));
+    this.stage.filters = this.ripples.map((f) => f.filter);
+    this.ripples.push(this.createRipple(500, 100));
+    this.stage.filters = this.ripples.map((f) => f.filter);
+    this.ripples.push(this.createRipple(300, 800));
+    this.stage.filters = this.ripples.map((f) => f.filter);
+    this.ripples.push(this.createRipple(430, 0));
+    this.stage.filters = this.ripples.map((f) => f.filter);
+    this.ripples.push(this.createRipple(700, 440));
+    this.stage.filters = this.ripples.map((f) => f.filter);
+
+    const blurFilter = new PIXI.filters.BlurFilter();
+    blurFilter.blur = 15;
+    this.stage.filters.push(blurFilter);
+
+    const blurIncrease = setInterval(() => {
+      if (blurFilter.blur > 0) {
+        blurFilter.blur -= 0.5;
+      } else {
+        clearInterval(blurIncrease);
+      }
+    }, 50);
+
+    this.updateStartAnimation();
+  }
+
+  initMouseAnimation() {
+    this.posX = this.renderer.width / 2;
+
+    this.displacementSprite = new PIXI.Sprite(loader.resources["img/gradient_large.png"].texture);
+    this.displacementFilter = new PIXI.filters.DisplacementFilter(this.displacementSprite);
+
+    this.displacementSprite.anchor.set(0.5);
+    this.displacementSprite.x = this.renderer.width / 2;
+    this.displacementSprite.y = this.renderer.height / 2;
+
+    this.vx = this.displacementSprite.x;
+    this.stage.addChild(this.displacementSprite);
+    this.stage.filters = [this.displacementFilter];
+    this.displacementFilter.scale.x = 0;
+    this.displacementFilter.scale.y = 0;
+
+    this.stage.on("mousemove", this.handleMouseMove).on("touchmove", this.handleMouseMove);
+
+    this.updateMouseAnimation();
+  }
+
+  createRipple = (positionX, positionY) => {
+    const newRippleId = idGenerator();
+    const rippleSprite = new PIXI.Sprite(loader.resources["img/map.png"].texture);
+    rippleSprite.anchor.set(0.5);
+    rippleSprite.position.set(positionX, positionY);
+    rippleSprite.scale.set(0);
+    this.stage.addChild(rippleSprite);
+
+    const newRipple = new Ripple(rippleSprite, newRippleId, this.removeRipple(newRippleId));
+    newRipple.filter.id = newRippleId;
+    newRipple.sprite.id = newRippleId;
+
+    return newRipple;
+  }
+
+  removeRipple = (id) => () => {
+    this.ripples = this.ripples.filter(ripple => ripple.id !== id);
+    this.stage.filters = this.stage.filters.filter(filter => filter.id !== id);
+    this.stage.children = this.stage.children.filter(children => children.id !== id);
+  }
+
+  handleMouseMove = (eventData) => {
+    this.posX = eventData.data.global.x;
+  }
+
+  updateStartAnimation = () => {
+    if (!this.ripples.length) { // якщо немає точок, то зупиняємо обновлення стартової анімації і запускаємо анімацію на mousemouve
+      this.initMouseAnimation();
+      return;
+    }
+
+    requestAnimationFrame(this.updateStartAnimation);
+    this.ripples.forEach(ripple => {
+      ripple.update();
+    });
+    this.renderer.render(this.stage);
+  }
+
+  updateMouseAnimation = () => {
+    const map = (n, start1, stop1, start2, stop2) => {
+      const newval = (n - start1) / (stop1 - start1) * (stop2 - start2) + start2;
+      return newval;
+    };
+
+    requestAnimationFrame(this.updateMouseAnimation);
+    this.vx += (this.posX - this.displacementSprite.x) * 0.045;
+    this.displacementSprite.x = this.vx;
+    var disp = Math.floor(this.posX - this.displacementSprite.x);
+    if (disp < 0) disp = -disp;
+    var fs = map(disp, 0, 500, 0, 120);
+    disp = map(disp, 0, 500, 0.1, 0.6);
+    this.displacementSprite.scale.x = disp;
+    this.displacementFilter.scale.x = fs;
+
+  }
 }
 
-function loop() {
-  requestAnimationFrame(loop);
-  vx += (posX - displacementSprite.x) * 0.045;
-  displacementSprite.x = vx;
-  var disp = Math.floor(posX - displacementSprite.x);
-  if (disp < 0) disp = -disp;
-  var fs = map(disp, 0, 500, 0, 120);
-  disp = map(disp, 0, 500, 0.1, 0.6);
-  displacementSprite.scale.x = disp;
-  displacementFilter.scale.x = fs;
+function startApp() {
+  new Application({ height: window.innerHeight, width: window.innerWidth });
 }
-
-const map = (n, start1, stop1, start2, stop2) => {
-  var newval = (n - start1) / (stop1 - start1) * (stop2 - start2) + start2;
-  return newval;
-};
